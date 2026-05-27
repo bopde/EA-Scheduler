@@ -1,5 +1,35 @@
 import { AvailSlot, Config, Member, TeamAssignment } from '../types'
 
+// Google Sheets stores time-formatted cells as Date serials anchored to
+// 1899-12-30. If the Apps Script doesn't format them before returning,
+// JSON.stringify converts them to ISO strings like "1899-12-29T22:30:00.000Z".
+// This sanitiser detects those strings and recovers the HH:mm value using
+// the UTC offset that matches the NZST epoch anchor (UTC+12 → subtract 12h).
+const TIME_KEYS: (keyof Config)[] = [
+  'weekday_shift_1_start', 'weekday_shift_1_end',
+  'weekday_shift_2_start', 'weekday_shift_2_end',
+  'weekend_shift_1_start', 'weekend_shift_1_end',
+  'weekend_shift_2_start', 'weekend_shift_2_end',
+]
+
+function sanitizeConfig(raw: Config): Config {
+  const out = { ...raw }
+  for (const key of TIME_KEYS) {
+    const val = out[key] as string
+    if (typeof val === 'string' && (val.includes('1899') || val.includes('1900'))) {
+      const d = new Date(val)
+      // Apps Script epoch: 1899-12-30 00:00 in the script's local timezone.
+      // For Pacific/Auckland (UTC+12/13) the UTC hours are shifted by the offset.
+      // We recover local hours by adding the NZST offset (720 minutes) back.
+      const localMinutes = d.getUTCHours() * 60 + d.getUTCMinutes() + 12 * 60
+      const h = Math.floor(localMinutes / 60) % 24
+      const m = localMinutes % 60
+      ;(out as Record<string, unknown>)[key] = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    }
+  }
+  return out
+}
+
 interface GasResponse<T> {
   ok: boolean
   data?: T
@@ -28,7 +58,8 @@ async function gasPost<T>(url: string, action: string, body: unknown): Promise<T
 }
 
 export async function getConfig(scriptUrl: string): Promise<Config> {
-  return gasGet<Config>(scriptUrl, { action: 'getConfig' })
+  const raw = await gasGet<Config>(scriptUrl, { action: 'getConfig' })
+  return sanitizeConfig(raw)
 }
 
 export async function getMembers(scriptUrl: string): Promise<Member[]> {

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getConfig, getMembers } from '../../api/gasClient'
 import { Config, Member } from '../../types'
 import { useSessionStore } from '../../store/sessionStore'
 import ScriptUrlInput from './ScriptUrlInput'
@@ -9,12 +10,25 @@ interface Props {
 }
 
 export default function SetupPage({ onReady }: Props) {
-  const { scriptUrl: cachedUrl, config: cachedConfig, members: cachedMembers } = useSessionStore()
+  const { scriptUrl: cachedUrl, config: cachedConfig, members: cachedMembers, setConnection } = useSessionStore()
 
   const [step, setStep] = useState<'url' | 'name'>(cachedUrl ? 'name' : 'url')
   const [connectedUrl, setConnectedUrl] = useState(cachedUrl)
   const [connectedMembers, setConnectedMembers] = useState<Member[]>(cachedMembers)
   const [connectedConfig, setConnectedConfig] = useState<Config | null>(cachedConfig)
+
+  // Silently re-fetch config + members on every load when a URL is cached,
+  // so stale localStorage values (e.g. old time formats) are replaced.
+  useEffect(() => {
+    if (!cachedUrl) return
+    Promise.all([getConfig(cachedUrl), getMembers(cachedUrl)])
+      .then(([freshConfig, freshMembers]) => {
+        setConnectedConfig(freshConfig)
+        setConnectedMembers(freshMembers)
+        setConnection(cachedUrl, freshConfig, freshMembers)
+      })
+      .catch(() => { /* silently keep cached data on network failure */ })
+  }, [cachedUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleConnected(url: string, config: Config, members: Member[]) {
     setConnectedUrl(url)
