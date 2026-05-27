@@ -135,6 +135,7 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
           <MyTeamsView
             scriptUrl={scriptUrl}
             memberName={memberName}
+            memberRole={memberRole}
             config={config}
             weekOffset={weekOffset}
           />
