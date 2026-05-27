@@ -191,11 +191,11 @@ function handleRecomputeTeams(e) {
     allTeams = allTeams.concat(computed);
   }
 
-  // Write to Teams sheet: clear range then append
+  // Write to Teams sheet: delete all data rows then append fresh
   var teamsSheet = getSheet(SHEET_TEAMS);
   var lastRow = teamsSheet.getLastRow();
   if (lastRow > 1) {
-    teamsSheet.getRange(2, 1, lastRow - 1, 7).clearContent();
+    teamsSheet.deleteRows(2, lastRow - 1);
   }
 
   var ts = new Date().toISOString();
@@ -229,10 +229,14 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
 
   var availCoords = [];
   var availMembers = [];
+  var seen = {};
   for (var j = 0; j < available.length; j++) {
-    var role = roleMap[available[j].memberName];
-    if (role === 'coordinator') availCoords.push(available[j].memberName);
-    else availMembers.push(available[j].memberName);
+    var mName = available[j].memberName;
+    if (seen[mName]) continue;
+    seen[mName] = true;
+    var role = roleMap[mName];
+    if (role === 'coordinator') availCoords.push(mName);
+    else availMembers.push(mName);
   }
 
   var total = availCoords.length + availMembers.length;
