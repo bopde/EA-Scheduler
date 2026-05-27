@@ -57,9 +57,8 @@ export function useAvailability(
         return new Map(m).set(key, next)
       })
 
-      setSaveStatus('saving')
-
-      // Reset the 2-second batch timer on every toggle
+      // Reset the 2-second batch timer on every toggle.
+      // Do NOT set saveStatus here — we only mark 'saving' when the request actually fires.
       if (batchTimer.current) clearTimeout(batchTimer.current)
       batchTimer.current = setTimeout(async () => {
         const changes = Array.from(pending.current.values())
@@ -68,6 +67,7 @@ export function useAvailability(
         originals.current.clear()
         batchTimer.current = null
 
+        setSaveStatus('saving')
         try {
           await saveAvailability(scriptUrl, memberName, changes)
           cache.current.clear()
