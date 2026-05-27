@@ -48,9 +48,24 @@ function err(msg) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+// Sheets auto-converts strings that look like dates/times into Date serial
+// objects when storing them via appendRow or manual entry. These helpers
+// normalise them back to the plain strings the rest of the code expects.
+function formatDateValue(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(val).trim();
+}
+
+function formatTimeValue(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  return String(val).trim();
+}
+
 // Read entire Config sheet as key-value object.
-// Sheets stores time values as Date objects anchored to 1899-12-30; format
-// them back to HH:mm strings so the frontend receives "10:30" not a date.
 function readConfig() {
   var sheet = getSheet(SHEET_CONFIG);
   var data = sheet.getDataRange().getValues();
@@ -60,7 +75,7 @@ function readConfig() {
     var val = data[i][COL_CONFIG_VAL - 1];
     if (!key) continue;
     if (val instanceof Date) {
-      val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
+      val = formatTimeValue(val);
     }
     config[key] = val;
   }
