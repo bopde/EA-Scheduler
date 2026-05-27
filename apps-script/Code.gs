@@ -55,7 +55,7 @@ function handleGetAvailability(e) {
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
     var name = String(row[COL_AVAIL_NAME - 1]).trim();
-    var date = String(row[COL_AVAIL_DATE - 1]).trim();
+    var date = formatDateValue(row[COL_AVAIL_DATE - 1]);
     if (name !== member) continue;
     if (date < from || date > to) continue;
     slots.push({
@@ -75,7 +75,7 @@ function handleGetAllAvailability(e) {
   var slots = [];
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
-    var date = String(row[COL_AVAIL_DATE - 1]).trim();
+    var date = formatDateValue(row[COL_AVAIL_DATE - 1]);
     if (date < from || date > to) continue;
     slots.push({
       memberName: String(row[COL_AVAIL_NAME - 1]).trim(),
@@ -103,7 +103,7 @@ function handleSaveAvailability(body) {
 
     var rowIdx = findRow(rows, function(r) {
       return String(r[COL_AVAIL_NAME - 1]).trim() === memberName &&
-             String(r[COL_AVAIL_DATE - 1]).trim() === date &&
+             formatDateValue(r[COL_AVAIL_DATE - 1]) === date &&
              Number(r[COL_AVAIL_SHIFT - 1]) === shiftIndex;
     });
 
@@ -126,7 +126,7 @@ function handleGetTeams(e) {
   var teams = [];
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
-    var date = String(row[COL_TEAM_DATE - 1]).trim();
+    var date = formatDateValue(row[COL_TEAM_DATE - 1]);
     if (date < from || date > to) continue;
     var membersStr = String(row[COL_TEAM_MEMBERS - 1]).trim();
     teams.push({
@@ -163,7 +163,7 @@ function handleRecomputeTeams(e) {
   var allSlots = [];
   for (var j = 0; j < availRows.length; j++) {
     var row = availRows[j];
-    var date = String(row[COL_AVAIL_DATE - 1]).trim();
+    var date = formatDateValue(row[COL_AVAIL_DATE - 1]);
     if (date < from || date > to) continue;
     allSlots.push({
       memberName: String(row[COL_AVAIL_NAME - 1]).trim(),
@@ -310,8 +310,16 @@ function setupSheets() {
   }
 
   ensureSheet(SHEET_MEMBERS, ['name', 'role', 'active']);
-  ensureSheet(SHEET_AVAILABILITY, ['member_name', 'date', 'shift_index', 'available', 'submitted_at']);
-  ensureSheet(SHEET_TEAMS, ['date', 'shift_index', 'team_number', 'coordinator_name', 'members', 'coordinator_filled_in', 'computed_at']);
+
+  var availSheet = ensureSheet(SHEET_AVAILABILITY, ['member_name', 'date', 'shift_index', 'available', 'submitted_at']);
+  // Force date column to plain text so Sheets doesn't convert ISO strings to serials
+  availSheet.getRange('B:B').setNumberFormat('@');
+
+  var teamsSheet = ensureSheet(SHEET_TEAMS, ['date', 'shift_index', 'team_number', 'coordinator_name', 'members', 'coordinator_filled_in', 'computed_at']);
+  teamsSheet.getRange('A:A').setNumberFormat('@');
+
+  // Force Config value column to plain text to prevent time strings becoming serials
+  configSheet.getRange('B:B').setNumberFormat('@');
 
   SpreadsheetApp.getUi().alert('Setup complete! All required sheets have been created.');
 }
