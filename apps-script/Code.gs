@@ -258,20 +258,17 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
     });
   }
 
-  // Distribute regular members round-robin
-  for (var m = 0; m < availMembers.length; m++) {
-    var teamIdx = m % numTeams;
-    if (teams[teamIdx].members.length < maxTeamSize - 1) {
-      teams[teamIdx].members.push(availMembers[m]);
-    }
-  }
+  var spareSet = {};
+  for (var sc = 0; sc < spareCoords.length; sc++) spareSet[spareCoords[sc]] = true;
 
-  // Fill short teams with spare coordinators
-  var sparePool = spareCoords.slice();
-  for (var t = 0; t < teams.length; t++) {
-    while (teams[t].members.length < minTeamSize - 1 && sparePool.length > 0) {
-      teams[t].members.push(sparePool.shift());
-      teams[t].coordinatorFilledIn = true;
+  // Distribute everyone round-robin: regular members first, spare coordinators after.
+  // Spare coordinators land wherever they land — all available people get assigned.
+  var pool = availMembers.concat(spareCoords);
+  for (var p = 0; p < pool.length; p++) {
+    var teamIdx = p % numTeams;
+    if (teams[teamIdx].members.length < maxTeamSize - 1) {
+      teams[teamIdx].members.push(pool[p]);
+      if (spareSet[pool[p]]) teams[teamIdx].coordinatorFilledIn = true;
     }
   }
 

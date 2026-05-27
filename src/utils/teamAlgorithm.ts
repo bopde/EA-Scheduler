@@ -30,6 +30,7 @@ export function computeTeams(
 
   const leaders = availCoords.slice(0, numTeams)
   const spareCoords = availCoords.slice(numTeams)
+  const spareSet = new Set(spareCoords)
 
   const teams: TeamAssignment[] = leaders.map((coord, i) => ({
     date,
@@ -40,20 +41,14 @@ export function computeTeams(
     coordinatorFilledIn: false,
   }))
 
-  // Distribute regular members round-robin
-  for (let i = 0; i < availMembers.length; i++) {
-    const teamIdx = i % numTeams
+  // Distribute everyone round-robin: regular members first, spare coordinators after.
+  // Spare coordinators land wherever they land — all available people get assigned.
+  const pool = [...availMembers, ...spareCoords]
+  for (let p = 0; p < pool.length; p++) {
+    const teamIdx = p % numTeams
     if (teams[teamIdx].members.length < maxTeamSize - 1) {
-      teams[teamIdx].members.push(availMembers[i])
-    }
-  }
-
-  // Fill short teams with spare coordinators
-  const sparePool = [...spareCoords]
-  for (const team of teams) {
-    while (team.members.length < minTeamSize - 1 && sparePool.length > 0) {
-      team.members.push(sparePool.shift()!)
-      team.coordinatorFilledIn = true
+      teams[teamIdx].members.push(pool[p])
+      if (spareSet.has(pool[p])) teams[teamIdx].coordinatorFilledIn = true
     }
   }
 
