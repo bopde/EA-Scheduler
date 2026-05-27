@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Config, Member } from '../../types'
+import { useSessionStore } from '../../store/sessionStore'
 import ScriptUrlInput from './ScriptUrlInput'
 import MemberSelector from './MemberSelector'
 
@@ -8,10 +9,12 @@ interface Props {
 }
 
 export default function SetupPage({ onReady }: Props) {
-  const [step, setStep] = useState<'url' | 'name'>('url')
-  const [connectedUrl, setConnectedUrl] = useState('')
-  const [connectedMembers, setConnectedMembers] = useState<Member[]>([])
-  const [connectedConfig, setConnectedConfig] = useState<Config | null>(null)
+  const { scriptUrl: cachedUrl, config: cachedConfig, members: cachedMembers } = useSessionStore()
+
+  const [step, setStep] = useState<'url' | 'name'>(cachedUrl ? 'name' : 'url')
+  const [connectedUrl, setConnectedUrl] = useState(cachedUrl)
+  const [connectedMembers, setConnectedMembers] = useState<Member[]>(cachedMembers)
+  const [connectedConfig, setConnectedConfig] = useState<Config | null>(cachedConfig)
 
   function handleConnected(url: string, config: Config, members: Member[]) {
     setConnectedUrl(url)
