@@ -10,6 +10,7 @@ import {
 import CalendarGrid from './CalendarGrid'
 import WeekNavigator from './WeekNavigator'
 import CoordinatorPage from '../coordinator/CoordinatorPage'
+import MyTeamsView from './MyTeamsView'
 
 interface Props {
   scriptUrl: string
@@ -21,7 +22,7 @@ interface Props {
 
 export default function SchedulerPage({ scriptUrl, memberName, memberRole, config, onLogout }: Props) {
   const [weekOffset, setWeekOffset] = useState(0)
-  const [view, setView] = useState<'schedule' | 'teams'>('schedule')
+  const [view, setView] = useState<'schedule' | 'my-teams' | 'teams'>('schedule')
 
   const startMonday = addDays(getMondayOf(new Date()), weekOffset * 7)
   const endDate = addDays(startMonday, config.scheduling_weeks_ahead * 7 - 1)
@@ -63,22 +64,28 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
                 {saveLabel}
               </span>
             )}
-            {memberRole === 'coordinator' && (
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-                <button
-                  onClick={() => setView('schedule')}
-                  className={`px-3 py-1.5 ${view === 'schedule' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  My Schedule
-                </button>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+              <button
+                onClick={() => setView('schedule')}
+                className={`px-3 py-1.5 ${view === 'schedule' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                My Schedule
+              </button>
+              <button
+                onClick={() => setView('my-teams')}
+                className={`px-3 py-1.5 ${view === 'my-teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                My Teams
+              </button>
+              {memberRole === 'coordinator' && (
                 <button
                   onClick={() => setView('teams')}
                   className={`px-3 py-1.5 ${view === 'teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 >
-                  Teams
+                  All Teams
                 </button>
-              </div>
-            )}
+              )}
+            </div>
             <button
               onClick={onLogout}
               className="text-sm text-gray-400 hover:text-gray-600 underline"
@@ -122,6 +129,15 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
               />
             )}
           </>
+        )}
+
+        {view === 'my-teams' && (
+          <MyTeamsView
+            scriptUrl={scriptUrl}
+            memberName={memberName}
+            config={config}
+            weekOffset={weekOffset}
+          />
         )}
 
         {view === 'teams' && memberRole === 'coordinator' && (

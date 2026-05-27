@@ -16,12 +16,10 @@ async function gasGet<T>(url: string, params: Record<string, string>): Promise<T
 }
 
 async function gasPost<T>(url: string, action: string, body: unknown): Promise<T> {
-  const payload = JSON.stringify({ action, ...body as object })
-  const form = new URLSearchParams({ payload })
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: form.toString(),
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action, ...body as object }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const json: GasResponse<T> = await res.json()
