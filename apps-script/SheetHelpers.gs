@@ -48,7 +48,9 @@ function err(msg) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Read entire Config sheet as key-value object
+// Read entire Config sheet as key-value object.
+// Sheets stores time values as Date objects anchored to 1899-12-30; format
+// them back to HH:mm strings so the frontend receives "10:30" not a date.
 function readConfig() {
   var sheet = getSheet(SHEET_CONFIG);
   var data = sheet.getDataRange().getValues();
@@ -56,7 +58,11 @@ function readConfig() {
   for (var i = 0; i < data.length; i++) {
     var key = String(data[i][COL_CONFIG_KEY - 1]).trim();
     var val = data[i][COL_CONFIG_VAL - 1];
-    if (key) config[key] = val;
+    if (!key) continue;
+    if (val instanceof Date) {
+      val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'HH:mm');
+    }
+    config[key] = val;
   }
   return config;
 }
