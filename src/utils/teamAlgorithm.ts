@@ -14,13 +14,15 @@ export function computeTeams(
     (s) => s.date === date && s.shiftIndex === shiftIndex && s.available,
   )
 
-  const availCoords = available
-    .filter((s) => roleMap.get(s.memberName) === 'coordinator')
-    .map((s) => s.memberName)
-
-  const availMembers = available
-    .filter((s) => roleMap.get(s.memberName) === 'member')
-    .map((s) => s.memberName)
+  const seen = new Set<string>()
+  const availCoords: string[] = []
+  const availMembers: string[] = []
+  for (const s of available) {
+    if (seen.has(s.memberName)) continue
+    seen.add(s.memberName)
+    if (roleMap.get(s.memberName) === 'coordinator') availCoords.push(s.memberName)
+    else availMembers.push(s.memberName)
+  }
 
   const total = availCoords.length + availMembers.length
   const numTeams = Math.min(availCoords.length, Math.floor(total / minTeamSize))

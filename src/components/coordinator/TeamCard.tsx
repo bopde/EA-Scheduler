@@ -1,3 +1,4 @@
+import { useSessionStore } from '../../store/sessionStore'
 import { TeamAssignment } from '../../types'
 
 interface Props {
@@ -5,38 +6,44 @@ interface Props {
 }
 
 export default function TeamCard({ team }: Props) {
+  const sessionMembers = useSessionStore((s) => s.members)
+  const roleMap = new Map(sessionMembers.map((m) => [m.name, m.role]))
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-800">Team {team.teamNumber}</span>
-        {team.coordinatorFilledIn && (
-          <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
-            Coordinator filling in
-          </span>
-        )}
-      </div>
-      <div className="text-xs text-gray-500">
-        Coordinator:{' '}
-        <span className="font-medium text-gray-700">
-          {team.coordinatorName}
-          {team.coordinatorFilledIn ? ' (as member)' : ''}
+        <span className="text-xs text-gray-400">
+          {team.members.length + 1} person{team.members.length !== 0 ? 's' : ''}
         </span>
       </div>
-      <div className="space-y-1">
-        {team.members.length === 0 ? (
-          <p className="text-xs text-gray-400 italic">No members assigned</p>
-        ) : (
-          team.members.map((m) => (
-            <div key={m} className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
-              <span className="text-sm text-gray-700">{m}</span>
-            </div>
-          ))
-        )}
+
+      {/* Coordinator */}
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" />
+        <span className="text-sm text-gray-700">{team.coordinatorName}</span>
+        <span className="ml-auto text-xs text-indigo-500 font-medium">coordinator</span>
       </div>
-      <div className="pt-1 text-xs text-gray-400">
-        {team.members.length} member{team.members.length !== 1 ? 's' : ''}
-      </div>
+
+      {/* Members */}
+      {team.members.length === 0 ? (
+        <p className="text-xs text-gray-400 italic">No members assigned</p>
+      ) : (
+        <div className="space-y-1">
+          {team.members.map((m) => {
+            const isCoordRole = roleMap.get(m) === 'coordinator'
+            return (
+              <div key={m} className="flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isCoordRole ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                <span className="text-sm text-gray-700">{m}</span>
+                {isCoordRole && (
+                  <span className="ml-auto text-xs text-amber-600">filling in</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

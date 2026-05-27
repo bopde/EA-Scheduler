@@ -11,7 +11,6 @@ export default function ShiftCell({ available, saving, shift, onToggle }: Props)
   return (
     <button
       onClick={onToggle}
-      disabled={saving}
       title={`${shift.start}–${shift.end}`}
       className={[
         'w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors border',

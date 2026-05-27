@@ -1,4 +1,5 @@
 import { useTeams } from '../../hooks/useTeams'
+import { useSessionStore } from '../../store/sessionStore'
 import { Config } from '../../types'
 import { addDays, formatDisplayDate, getMondayOf, getShiftsForDate, parseISODate, toISODate } from '../../utils/dateUtils'
 
@@ -17,13 +18,13 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
   const to = toISODate(endDate)
 
   const { teams, loading, error } = useTeams(scriptUrl, from, to)
+  const sessionMembers = useSessionStore((s) => s.members)
+  const roleMap = new Map(sessionMembers.map((m) => [m.name, m.role]))
 
-  // Find every assignment where this user appears (as member or coordinator)
   const mySlots = teams.filter(
     (t) => t.coordinatorName === memberName || t.members.includes(memberName),
   )
 
-  // Group by date
   const byDate = new Map<string, typeof mySlots>()
   for (const slot of mySlots) {
     if (!byDate.has(slot.date)) byDate.set(slot.date, [])
@@ -76,7 +77,6 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
                 const shift = shifts[team.shiftIndex]
                 const isCoord = team.coordinatorName === memberName
                 const isFillingIn = !isCoord && team.members.includes(memberName) && memberRole === 'coordinator'
-                const others = [team.coordinatorName, ...team.members]
 
                 return (
                   <div key={`${date}-${team.shiftIndex}-${team.teamNumber}`} className="px-5 py-4">
@@ -107,34 +107,45 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
                     </div>
 
                     <div className="space-y-1.5">
-                      {others.map((name, i) => {
+                      {/* Coordinator row — always shown first and separately */}
+                      <div
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${
+                          team.coordinatorName === memberName ? 'bg-indigo-50 border border-indigo-200' : 'bg-indigo-50/50'
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
+                        <span className={`text-sm ${team.coordinatorName === memberName ? 'font-semibold text-indigo-800' : 'text-gray-700'}`}>
+                          {team.coordinatorName}
+                          {team.coordinatorName === memberName && ' (you)'}
+                        </span>
+                        <span className="ml-auto text-xs text-indigo-500 font-medium">coordinator</span>
+                      </div>
+
+                      {/* Member rows */}
+                      {team.members.map((name) => {
                         const isMe = name === memberName
-                        const isThisCoord = name === team.coordinatorName
+                        const isCoordRole = roleMap.get(name) === 'coordinator'
                         return (
                           <div
-                            key={i}
+                            key={name}
                             className={`flex items-center gap-2.5 rounded-lg px-3 py-2 ${
                               isMe ? 'bg-indigo-50 border border-indigo-200' : 'bg-gray-50'
                             }`}
                           >
-                            <span
-                              className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                isThisCoord ? 'bg-indigo-400' : 'bg-emerald-400'
-                              }`}
-                            />
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isCoordRole ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                             <span className={`text-sm ${isMe ? 'font-semibold text-indigo-800' : 'text-gray-700'}`}>
                               {name}
                               {isMe && ' (you)'}
                             </span>
-                            {isThisCoord && (
-                              <span className="ml-auto text-xs text-gray-400">coordinator</span>
+                            {isCoordRole && (
+                              <span className="ml-auto text-xs text-amber-600 font-medium">filling in</span>
                             )}
                           </div>
                         )
                       })}
                     </div>
 
-                    {team.members.length === 0 && isCoord && (
+                    {team.members.length === 0 && (
                       <p className="text-xs text-gray-400 italic mt-2">No members assigned yet</p>
                     )}
                   </div>
