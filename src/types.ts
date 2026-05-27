@@ -9,6 +9,7 @@ export interface Config {
   weekend_shift_2_end: string
   scheduling_weeks_ahead: number
   min_team_size: number
+  max_team_size: number
   max_teams: number
 }
 

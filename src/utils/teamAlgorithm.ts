@@ -5,9 +5,8 @@ export function computeTeams(
   shiftIndex: 0 | 1,
   allAvailability: AvailSlot[],
   members: Member[],
-  previousTeams: TeamAssignment[],
   minTeamSize: number,
-  maxTeams: number,
+  maxTeamSize: number,
 ): TeamAssignment[] {
   const roleMap = new Map(members.map((m) => [m.name, m.role]))
 
@@ -23,36 +22,37 @@ export function computeTeams(
     .filter((s) => roleMap.get(s.memberName) === 'member')
     .map((s) => s.memberName)
 
-  // Day-before check: if a team from the previous assignment was short, move
-  // that coordinator into the member pool for this slot.
-  const coordinatorFilledInSet = new Set<string>()
-  for (const prev of previousTeams) {
-    if (prev.members.length < minTeamSize) {
-      const coordIdx = availCoords.indexOf(prev.coordinatorName)
-      if (coordIdx !== -1) {
-        availCoords.splice(coordIdx, 1)
-        availMembers.push(prev.coordinatorName)
-        coordinatorFilledInSet.add(prev.coordinatorName)
-      }
+  const total = availCoords.length + availMembers.length
+  const numTeams = Math.min(availCoords.length, Math.floor(total / minTeamSize))
+  if (numTeams === 0) return []
+
+  const leaders = availCoords.slice(0, numTeams)
+  const spareCoords = availCoords.slice(numTeams)
+
+  const teams: TeamAssignment[] = leaders.map((coord, i) => ({
+    date,
+    shiftIndex,
+    teamNumber: i + 1,
+    coordinatorName: coord,
+    members: [],
+    coordinatorFilledIn: false,
+  }))
+
+  // Distribute regular members round-robin
+  for (let i = 0; i < availMembers.length; i++) {
+    const teamIdx = i % numTeams
+    if (teams[teamIdx].members.length < maxTeamSize - 1) {
+      teams[teamIdx].members.push(availMembers[i])
     }
   }
 
-  const teamCount = Math.min(availCoords.length, maxTeams, 3)
-  if (teamCount === 0) return []
-
-  const teams: TeamAssignment[] = []
-  let memberPool = [...availMembers]
-
-  for (let i = 0; i < teamCount; i++) {
-    const assigned = memberPool.splice(0, minTeamSize)
-    teams.push({
-      date,
-      shiftIndex,
-      teamNumber: i + 1,
-      coordinatorName: availCoords[i],
-      members: assigned,
-      coordinatorFilledIn: coordinatorFilledInSet.has(availCoords[i]),
-    })
+  // Fill short teams with spare coordinators
+  const sparePool = [...spareCoords]
+  for (const team of teams) {
+    while (team.members.length < minTeamSize - 1 && sparePool.length > 0) {
+      team.members.push(sparePool.shift()!)
+      team.coordinatorFilledIn = true
+    }
   }
 
   return teams

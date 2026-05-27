@@ -5,11 +5,12 @@ import { addDays, formatDisplayDate, getMondayOf, getShiftsForDate, parseISODate
 interface Props {
   scriptUrl: string
   memberName: string
+  memberRole: 'member' | 'coordinator' | ''
   config: Config
   weekOffset: number
 }
 
-export default function MyTeamsView({ scriptUrl, memberName, config, weekOffset }: Props) {
+export default function MyTeamsView({ scriptUrl, memberName, memberRole, config, weekOffset }: Props) {
   const startMonday = addDays(getMondayOf(new Date()), weekOffset * 7)
   const endDate = addDays(startMonday, config.scheduling_weeks_ahead * 7 - 1)
   const from = toISODate(startMonday)
@@ -74,10 +75,8 @@ export default function MyTeamsView({ scriptUrl, memberName, config, weekOffset 
               {byDate.get(date)!.map((team) => {
                 const shift = shifts[team.shiftIndex]
                 const isCoord = team.coordinatorName === memberName
-                const teammates = isCoord ? team.members : team.members.filter((m) => m !== memberName)
-                const others = isCoord
-                  ? [team.coordinatorName, ...team.members]
-                  : [team.coordinatorName, ...team.members]
+                const isFillingIn = !isCoord && team.members.includes(memberName) && memberRole === 'coordinator'
+                const others = [team.coordinatorName, ...team.members]
 
                 return (
                   <div key={`${date}-${team.shiftIndex}-${team.teamNumber}`} className="px-5 py-4">
@@ -91,10 +90,15 @@ export default function MyTeamsView({ scriptUrl, memberName, config, weekOffset 
                       <div className="flex items-center gap-2">
                         {isCoord && (
                           <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs text-indigo-700 font-medium">
-                            {team.coordinatorFilledIn ? 'Filling in' : 'Coordinator'}
+                            Coordinator
                           </span>
                         )}
-                        {!isCoord && (
+                        {isFillingIn && (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs text-amber-700 font-medium">
+                            Filling in
+                          </span>
+                        )}
+                        {!isCoord && !isFillingIn && (
                           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs text-emerald-700 font-medium">
                             Team member
                           </span>
@@ -105,7 +109,7 @@ export default function MyTeamsView({ scriptUrl, memberName, config, weekOffset 
                     <div className="space-y-1.5">
                       {others.map((name, i) => {
                         const isMe = name === memberName
-                        const isThisCoord = name === team.coordinatorName && !team.coordinatorFilledIn
+                        const isThisCoord = name === team.coordinatorName
                         return (
                           <div
                             key={i}
@@ -130,8 +134,8 @@ export default function MyTeamsView({ scriptUrl, memberName, config, weekOffset 
                       })}
                     </div>
 
-                    {teammates.length === 0 && !isCoord && (
-                      <p className="text-xs text-gray-400 italic mt-2">No other members assigned yet</p>
+                    {team.members.length === 0 && isCoord && (
+                      <p className="text-xs text-gray-400 italic mt-2">No members assigned yet</p>
                     )}
                   </div>
                 )

@@ -24,7 +24,8 @@ const defaultConfig: Config = {
   weekend_shift_2_start: '13:30',
   weekend_shift_2_end: '16:30',
   scheduling_weeks_ahead: 4,
-  min_team_size: 5,
+  min_team_size: 4,
+  max_team_size: 6,
   max_teams: 3,
 }
 

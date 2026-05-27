@@ -145,8 +145,8 @@ function handleRecomputeTeams(e) {
   var from = e.parameter.from;
   var to = e.parameter.to;
   var config = readConfig();
-  var minTeamSize = Number(config.min_team_size) || 5;
-  var maxTeams = Number(config.max_teams) || 3;
+  var minTeamSize = Number(config.min_team_size) || 4;
+  var maxTeamSize = Number(config.max_team_size) || 6;
 
   var memberRows = readSheetData(SHEET_MEMBERS);
   var members = [];
@@ -184,17 +184,10 @@ function handleRecomputeTeams(e) {
     cur.setDate(cur.getDate() + 1);
   }
 
-  // Compute teams in order (day-before check uses previously computed teams)
   var allTeams = [];
   for (var k = 0; k < slotPairs.length; k++) {
     var pair = slotPairs[k];
-    var prevDay = new Date(pair.date);
-    prevDay.setDate(prevDay.getDate() - 1);
-    var prevIso = prevDay.toISOString().split('T')[0];
-    var prevTeams = allTeams.filter(function(t) {
-      return t.date === prevIso && t.shiftIndex === pair.shiftIndex;
-    });
-    var computed = computeTeamsForSlot(pair.date, pair.shiftIndex, allSlots, members, prevTeams, minTeamSize, maxTeams);
+    var computed = computeTeamsForSlot(pair.date, pair.shiftIndex, allSlots, members, minTeamSize, maxTeamSize);
     allTeams = allTeams.concat(computed);
   }
 
@@ -224,7 +217,7 @@ function handleRecomputeTeams(e) {
 
 // ===== TEAM ASSIGNMENT ALGORITHM =====
 
-function computeTeamsForSlot(date, shiftIndex, allSlots, members, previousTeams, minTeamSize, maxTeams) {
+function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, maxTeamSize) {
   var roleMap = {};
   for (var i = 0; i < members.length; i++) {
     roleMap[members[i].name] = members[i].role;
@@ -242,36 +235,42 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, previousTeams,
     else availMembers.push(available[j].memberName);
   }
 
-  // Day-before check
-  var filledInSet = {};
-  for (var p = 0; p < previousTeams.length; p++) {
-    if (previousTeams[p].members.length < minTeamSize) {
-      var coordName = previousTeams[p].coordinatorName;
-      var idx = availCoords.indexOf(coordName);
-      if (idx !== -1) {
-        availCoords.splice(idx, 1);
-        availMembers.push(coordName);
-        filledInSet[coordName] = true;
-      }
-    }
-  }
+  var total = availCoords.length + availMembers.length;
+  var numTeams = Math.min(availCoords.length, Math.floor(total / minTeamSize));
+  if (numTeams === 0) return [];
 
-  var teamCount = Math.min(availCoords.length, maxTeams, 3);
-  if (teamCount === 0) return [];
+  var leaders = availCoords.slice(0, numTeams);
+  var spareCoords = availCoords.slice(numTeams);
 
   var teams = [];
-  var pool = availMembers.slice();
-  for (var n = 0; n < teamCount; n++) {
-    var assigned = pool.splice(0, minTeamSize);
+  for (var n = 0; n < numTeams; n++) {
     teams.push({
       date: date,
       shiftIndex: shiftIndex,
       teamNumber: n + 1,
-      coordinatorName: availCoords[n],
-      members: assigned,
-      coordinatorFilledIn: !!filledInSet[availCoords[n]],
+      coordinatorName: leaders[n],
+      members: [],
+      coordinatorFilledIn: false,
     });
   }
+
+  // Distribute regular members round-robin
+  for (var m = 0; m < availMembers.length; m++) {
+    var teamIdx = m % numTeams;
+    if (teams[teamIdx].members.length < maxTeamSize - 1) {
+      teams[teamIdx].members.push(availMembers[m]);
+    }
+  }
+
+  // Fill short teams with spare coordinators
+  var sparePool = spareCoords.slice();
+  for (var t = 0; t < teams.length; t++) {
+    while (teams[t].members.length < minTeamSize - 1 && sparePool.length > 0) {
+      teams[t].members.push(sparePool.shift());
+      teams[t].coordinatorFilledIn = true;
+    }
+  }
+
   return teams;
 }
 
@@ -303,7 +302,8 @@ function setupSheets() {
       ['weekend_shift_2_start', '13:30'],
       ['weekend_shift_2_end', '16:30'],
       ['scheduling_weeks_ahead', 4],
-      ['min_team_size', 5],
+      ['min_team_size', 4],
+      ['max_team_size', 6],
       ['max_teams', 3],
     ];
     configSheet.getRange(2, 1, defaults.length, 2).setValues(defaults);
