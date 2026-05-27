@@ -10,6 +10,7 @@ interface SessionState {
   members: Member[]
   setConnection: (url: string, config: Config, members: Member[]) => void
   setSelectedMember: (name: string, role: 'member' | 'coordinator') => void
+  clearMember: () => void
   disconnect: () => void
 }
 
@@ -41,6 +42,8 @@ export const useSessionStore = create<SessionState>()(
         set({ scriptUrl: url, config, members }),
       setSelectedMember: (name, role) =>
         set({ selectedMember: name, memberRole: role }),
+      clearMember: () =>
+        set({ selectedMember: '', memberRole: '' }),
       disconnect: () =>
         set({ scriptUrl: '', selectedMember: '', memberRole: '', config: null, members: [] }),
     }),

@@ -4,7 +4,7 @@ import SchedulerPage from './components/scheduler/SchedulerPage'
 import { Config, Member } from './types'
 
 export default function App() {
-  const { scriptUrl, selectedMember, memberRole, config, setConnection, setSelectedMember, disconnect } =
+  const { scriptUrl, selectedMember, memberRole, config, setConnection, setSelectedMember, clearMember } =
     useSessionStore()
 
   const isReady = Boolean(scriptUrl && selectedMember && config)
@@ -30,7 +30,7 @@ export default function App() {
       memberName={selectedMember}
       memberRole={memberRole}
       config={config!}
-      onLogout={disconnect}
+      onLogout={clearMember}
     />
   )
 }
