@@ -1,5 +1,5 @@
+import { useRoleMap } from '../../hooks/useRoleMap'
 import { useTeams } from '../../hooks/useTeams'
-import { useSessionStore } from '../../store/sessionStore'
 import { Config } from '../../types'
 import { addDays, formatDisplayDate, getMondayOf, getShiftsForDate, parseISODate, toISODate } from '../../utils/dateUtils'
 
@@ -18,8 +18,7 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
   const to = toISODate(endDate)
 
   const { teams, loading, error } = useTeams(scriptUrl, from, to)
-  const sessionMembers = useSessionStore((s) => s.members)
-  const roleMap = new Map(sessionMembers.map((m) => [m.name, m.role]))
+  const roleMap = useRoleMap()
 
   const mySlots = teams.filter(
     (t) => t.coordinatorName === memberName || t.members.includes(memberName),

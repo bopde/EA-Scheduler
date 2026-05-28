@@ -1,4 +1,4 @@
-import { useSessionStore } from '../../store/sessionStore'
+import { useRoleMap } from '../../hooks/useRoleMap'
 import { TeamAssignment } from '../../types'
 
 interface Props {
@@ -6,8 +6,7 @@ interface Props {
 }
 
 export default function TeamCard({ team }: Props) {
-  const sessionMembers = useSessionStore((s) => s.members)
-  const roleMap = new Map(sessionMembers.map((m) => [m.name, m.role]))
+  const roleMap = useRoleMap()
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">

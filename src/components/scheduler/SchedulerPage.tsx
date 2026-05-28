@@ -142,7 +142,11 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
         )}
 
         {view === 'teams' && memberRole === 'coordinator' && (
-          <CoordinatorPage scriptUrl={scriptUrl} from={from} to={to} />
+          <CoordinatorPage
+            scriptUrl={scriptUrl}
+            from={toISODate(getMondayOf(new Date()))}
+            to={toISODate(addDays(getMondayOf(new Date()), config.scheduling_weeks_ahead * 7 - 1))}
+          />
         )}
       </main>
     </div>

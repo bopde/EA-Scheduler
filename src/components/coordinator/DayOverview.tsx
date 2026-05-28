@@ -20,9 +20,11 @@ export default function DayOverview({ date, teams, allAvailability }: Props) {
         .filter((t) => t.shiftIndex === si)
         .flatMap((t) => [t.coordinatorName, ...t.members]),
     )
-    return allAvailability
-      .filter((s) => s.date === date && s.shiftIndex === si && !assigned.has(s.memberName))
-      .map((s) => s.memberName)
+    return Array.from(new Set(
+      allAvailability
+        .filter((s) => s.date === date && s.shiftIndex === si && !assigned.has(s.memberName))
+        .map((s) => s.memberName),
+    ))
   })
 
   const hasContent = teams.length > 0 || unassignedByShift.some((u) => u.length > 0)

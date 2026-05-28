@@ -48,6 +48,16 @@ export const useSessionStore = create<SessionState>()(
       disconnect: () =>
         set({ scriptUrl: '', selectedMember: '', memberRole: '', config: null, members: [] }),
     }),
-    { name: 'ea-scheduler-session' },
+    {
+      name: 'ea-scheduler-session',
+      version: 1,
+      migrate: (persisted: unknown, version: number) => {
+        const s = persisted as SessionState
+        if (version < 1 && s.config && (s.config as unknown as Record<string, unknown>).max_team_size === undefined) {
+          s.config = { ...s.config, max_team_size: 6 }
+        }
+        return s
+      },
+    },
   ),
 )
