@@ -83,14 +83,31 @@ The URL is remembered in your browser, so you won't need to re-enter it on futur
 
 ## Coordinator usage
 
-Once logged in as a coordinator, you'll see a **Teams** tab alongside **My Schedule**.
+Once logged in as a coordinator, you'll see **My Schedule**, **My Teams**, and **All Teams** tabs.
 
 - **My Schedule** — same as any team member; set your own availability here
-- **Teams** — shows the computed team assignments for each day and shift
+- **My Teams** — shows the shifts you're personally assigned to (as leader or fill-in)
+- **All Teams** — shows every computed team assignment across the current scheduling window
   - Click **Recompute Teams** after availability has been updated to regenerate assignments
-  - Teams are formed around coordinator availability: up to 3 coordinators = up to 3 teams
-  - Team 1 fills to the minimum size first, then Team 2, then Team 3
-  - If a team was short the day before, the coordinator for that team is automatically moved into a member role to fill the gap (shown with an amber badge)
+
+### How far ahead does Recompute Teams work?
+
+It covers the current scheduling window: from today's Monday through `scheduling_weeks_ahead` weeks (default: 4 weeks). It only rewrites team assignments for that date range — dates outside the window are left untouched.
+
+### How coordinators are assigned (leading vs filling in)
+
+1. All coordinators who marked availability for a shift are collected in the order they submitted it (Availability sheet row order).
+2. The number of teams is `min(available coordinators, floor(total available people / min_team_size))` — you need at least one coordinator *and* enough people to fill a minimum-size team.
+3. The **first N coordinators** (where N = number of teams) each lead a team. They appear with an indigo badge.
+4. Any **remaining coordinators** are treated as regular members and distributed into existing teams. They appear with an amber "filling in" badge.
+
+There is no manual priority — whoever submitted availability first is most likely to lead.
+
+### Who sits out when teams are full
+
+The remaining pool (`regular members` first, then `spare coordinators`) is distributed round-robin across teams. Each team accepts at most `max_team_size − 1` members (plus coordinator = `max_team_size` total). If a team is already full when someone's round-robin turn comes around, **that person is skipped** — they are not reassigned to another team with available space.
+
+This means the people appearing latest in the Availability sheet who land on a full team in their round-robin slot will sit out. They'll appear in the "Available but not assigned" section under each shift in the All Teams view.
 
 ---
 
@@ -108,9 +125,9 @@ Edit the **Config** sheet directly in Google Sheets:
 | `weekend_shift_1_end` | 13:30 | Weekend first shift end |
 | `weekend_shift_2_start` | 13:30 | Weekend second shift start |
 | `weekend_shift_2_end` | 16:30 | Weekend second shift end |
-| `scheduling_weeks_ahead` | 4 | How many weeks the calendar shows per page |
-| `min_team_size` | 5 | Members per team before overflow starts |
-| `max_teams` | 3 | Maximum number of teams |
+| `scheduling_weeks_ahead` | 4 | How many weeks the calendar and recompute window covers |
+| `min_team_size` | 4 | Minimum people (including coordinator) needed to form a team |
+| `max_team_size` | 6 | Maximum people per team (including coordinator); anyone beyond this sits out |
 
 Changes take effect immediately — no redeployment needed.
 
