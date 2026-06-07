@@ -11,6 +11,7 @@ import CalendarGrid from './CalendarGrid'
 import WeekNavigator from './WeekNavigator'
 import CoordinatorPage from '../coordinator/CoordinatorPage'
 import MyTeamsView from './MyTeamsView'
+import TeamAvailabilityView from '../coordinator/TeamAvailabilityView'
 
 interface Props {
   scriptUrl: string
@@ -21,8 +22,12 @@ interface Props {
 }
 
 export default function SchedulerPage({ scriptUrl, memberName, memberRole, config, onLogout }: Props) {
+  const isProjectLead = memberRole === 'project_lead'
+
   const [weekOffset, setWeekOffset] = useState(0)
-  const [view, setView] = useState<'schedule' | 'my-teams' | 'teams'>('schedule')
+  const [view, setView] = useState<'schedule' | 'my-teams' | 'teams' | 'team-availability'>(
+    isProjectLead ? 'team-availability' : 'schedule'
+  )
 
   const startMonday = addDays(getMondayOf(new Date()), weekOffset * 7)
   const endDate = addDays(startMonday, config.scheduling_weeks_ahead * 7 - 1)
@@ -58,34 +63,56 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
               )}
             </span>
           </div>
+
           <div className="flex items-center gap-3">
-            {saveLabel && (
+            {!isProjectLead && saveLabel && (
               <span className={`text-xs ${saveStatus === 'error' ? 'text-red-500' : 'text-gray-400'}`}>
                 {saveLabel}
               </span>
             )}
+
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-              <button
-                onClick={() => setView('schedule')}
-                className={`px-3 py-1.5 ${view === 'schedule' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                My Schedule
-              </button>
-              <button
-                onClick={() => setView('my-teams')}
-                className={`px-3 py-1.5 ${view === 'my-teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
-                My Teams
-              </button>
-              {(memberRole === 'coordinator' || memberRole === 'project_lead') && (
-                <button
-                  onClick={() => setView('teams')}
-                  className={`px-3 py-1.5 ${view === 'teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  All Teams
-                </button>
+              {isProjectLead ? (
+                <>
+                  <button
+                    onClick={() => setView('team-availability')}
+                    className={`px-3 py-1.5 ${view === 'team-availability' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Team Availability
+                  </button>
+                  <button
+                    onClick={() => setView('teams')}
+                    className={`px-3 py-1.5 ${view === 'teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    All Teams
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setView('schedule')}
+                    className={`px-3 py-1.5 ${view === 'schedule' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    My Schedule
+                  </button>
+                  <button
+                    onClick={() => setView('my-teams')}
+                    className={`px-3 py-1.5 ${view === 'my-teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    My Teams
+                  </button>
+                  {memberRole === 'coordinator' && (
+                    <button
+                      onClick={() => setView('teams')}
+                      className={`px-3 py-1.5 ${view === 'teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      All Teams
+                    </button>
+                  )}
+                </>
               )}
             </div>
+
             <button
               onClick={onLogout}
               className="text-sm text-gray-400 hover:text-gray-600 underline"
@@ -97,6 +124,13 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+        {view === 'team-availability' && isProjectLead && (
+          <TeamAvailabilityView
+            scriptUrl={scriptUrl}
+            config={config}
+          />
+        )}
+
         {view === 'schedule' && (
           <>
             <div className="flex items-center justify-between">
