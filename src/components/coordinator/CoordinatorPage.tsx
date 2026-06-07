@@ -8,9 +8,10 @@ interface Props {
   scriptUrl: string
   from: string
   to: string
+  memberRole: 'member' | 'coordinator' | 'project_lead' | ''
 }
 
-export default function CoordinatorPage({ scriptUrl, from, to }: Props) {
+export default function CoordinatorPage({ scriptUrl, from, to, memberRole }: Props) {
   const { teams, loading, recomputing, error, recompute } = useTeams(scriptUrl, from, to)
   const [allAvail, setAllAvail] = useState<AvailSlot[]>([])
   const [availLoading, setAvailLoading] = useState(false)
@@ -48,13 +49,15 @@ export default function CoordinatorPage({ scriptUrl, from, to }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800">Team Assignments</h2>
-        <button
-          onClick={handleRecompute}
-          disabled={recomputing || isLoading}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-        >
-          {recomputing ? 'Recomputing…' : 'Recompute Teams'}
-        </button>
+        {memberRole === 'project_lead' && (
+          <button
+            onClick={handleRecompute}
+            disabled={recomputing || isLoading}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            {recomputing ? 'Recomputing…' : 'Recompute Teams'}
+          </button>
+        )}
       </div>
 
       {(error || availError) && (
@@ -70,7 +73,10 @@ export default function CoordinatorPage({ scriptUrl, from, to }: Props) {
       {!isLoading && allDates.length === 0 && !error && !availError && (
         <div className="text-center py-12 text-gray-400">
           <p className="mb-3">No availability or team assignments yet.</p>
-          <p className="text-sm">Once members submit availability, click <strong>Recompute Teams</strong> to generate them.</p>
+          {memberRole === 'project_lead'
+            ? <p className="text-sm">Once members submit availability, click <strong>Recompute Teams</strong> to generate them.</p>
+            : <p className="text-sm">Ask your project lead to run <strong>Recompute Teams</strong> once availability has been submitted.</p>
+          }
         </div>
       )}
 
@@ -80,6 +86,8 @@ export default function CoordinatorPage({ scriptUrl, from, to }: Props) {
           date={date}
           teams={dateMap.get(date) ?? []}
           allAvailability={allAvail}
+          memberRole={memberRole}
+          scriptUrl={scriptUrl}
         />
       ))}
     </div>

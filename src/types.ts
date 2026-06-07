@@ -15,7 +15,7 @@ export interface Config {
 
 export interface Member {
   name: string
-  role: 'member' | 'coordinator'
+  role: 'member' | 'coordinator' | 'project_lead'
 }
 
 export interface AvailSlot {

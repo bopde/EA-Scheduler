@@ -6,7 +6,7 @@ import { addDays, formatDisplayDate, getMondayOf, getShiftsForDate, parseISODate
 interface Props {
   scriptUrl: string
   memberName: string
-  memberRole: 'member' | 'coordinator' | ''
+  memberRole: 'member' | 'coordinator' | 'project_lead' | ''
   config: Config
   weekOffset: number
 }
@@ -75,7 +75,7 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
               {byDate.get(date)!.map((team) => {
                 const shift = shifts[team.shiftIndex]
                 const isCoord = team.coordinatorName === memberName
-                const isFillingIn = !isCoord && team.members.includes(memberName) && memberRole === 'coordinator'
+                const isFillingIn = !isCoord && team.members.includes(memberName) && (memberRole === 'coordinator' || memberRole === 'project_lead')
 
                 return (
                   <div key={`${date}-${team.shiftIndex}-${team.teamNumber}`} className="px-5 py-4">
@@ -123,7 +123,7 @@ export default function MyTeamsView({ scriptUrl, memberName, memberRole, config,
                       {/* Member rows */}
                       {team.members.map((name) => {
                         const isMe = name === memberName
-                        const isCoordRole = roleMap.get(name) === 'coordinator'
+                        const isCoordRole = roleMap.get(name) === 'coordinator' || roleMap.get(name) === 'project_lead'
                         return (
                           <div
                             key={name}

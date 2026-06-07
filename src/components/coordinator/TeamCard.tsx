@@ -30,7 +30,7 @@ export default function TeamCard({ team }: Props) {
       ) : (
         <div className="space-y-1">
           {team.members.map((m) => {
-            const isCoordRole = roleMap.get(m) === 'coordinator'
+            const isCoordRole = roleMap.get(m) === 'coordinator' || roleMap.get(m) === 'project_lead'
             return (
               <div key={m} className="flex items-center gap-2">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isCoordRole ? 'bg-amber-400' : 'bg-emerald-400'}`} />

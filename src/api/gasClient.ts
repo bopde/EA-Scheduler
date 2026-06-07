@@ -99,6 +99,15 @@ export async function getTeams(
   return gasGet<TeamAssignment[]>(scriptUrl, { action: 'getTeams', from, to })
 }
 
+export async function saveTeamSlot(
+  scriptUrl: string,
+  date: string,
+  shiftIndex: 0 | 1,
+  teams: TeamAssignment[],
+): Promise<{ saved: number }> {
+  return gasPost<{ saved: number }>(scriptUrl, 'saveTeamSlot', { date, shiftIndex, teams })
+}
+
 export async function recomputeTeams(
   scriptUrl: string,
   from: string,

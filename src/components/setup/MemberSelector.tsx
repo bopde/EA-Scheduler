@@ -3,7 +3,7 @@ import { Member } from '../../types'
 
 interface Props {
   members: Member[]
-  onSelect: (name: string, role: 'member' | 'coordinator') => void
+  onSelect: (name: string, role: 'member' | 'coordinator' | 'project_lead') => void
 }
 
 export default function MemberSelector({ members, onSelect }: Props) {
@@ -30,7 +30,7 @@ export default function MemberSelector({ members, onSelect }: Props) {
         <option value="">Select your name…</option>
         {active.map((m) => (
           <option key={m.name} value={m.name}>
-            {m.name}{m.role === 'coordinator' ? ' (Coordinator)' : ''}
+            {m.name}{m.role === 'coordinator' ? ' (Coordinator)' : m.role === 'project_lead' ? ' (Project Lead)' : ''}
           </option>
         ))}
       </select>

@@ -14,7 +14,7 @@ export default function App() {
     cfg: Config,
     members: Member[],
     name: string,
-    role: 'member' | 'coordinator',
+    role: 'member' | 'coordinator' | 'project_lead',
   ) {
     setConnection(url, cfg, members)
     setSelectedMember(name, role)

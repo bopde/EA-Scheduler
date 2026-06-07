@@ -5,11 +5,11 @@ import { Config, Member } from '../types'
 interface SessionState {
   scriptUrl: string
   selectedMember: string
-  memberRole: 'member' | 'coordinator' | ''
+  memberRole: 'member' | 'coordinator' | 'project_lead' | ''
   config: Config | null
   members: Member[]
   setConnection: (url: string, config: Config, members: Member[]) => void
-  setSelectedMember: (name: string, role: 'member' | 'coordinator') => void
+  setSelectedMember: (name: string, role: 'member' | 'coordinator' | 'project_lead') => void
   clearMember: () => void
   disconnect: () => void
 }

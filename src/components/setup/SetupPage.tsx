@@ -6,7 +6,7 @@ import ScriptUrlInput from './ScriptUrlInput'
 import MemberSelector from './MemberSelector'
 
 interface Props {
-  onReady: (url: string, config: Config, members: Member[], name: string, role: 'member' | 'coordinator') => void
+  onReady: (url: string, config: Config, members: Member[], name: string, role: 'member' | 'coordinator' | 'project_lead') => void
 }
 
 export default function SetupPage({ onReady }: Props) {
@@ -37,7 +37,7 @@ export default function SetupPage({ onReady }: Props) {
     setStep('name')
   }
 
-  function handleSelect(name: string, role: 'member' | 'coordinator') {
+  function handleSelect(name: string, role: 'member' | 'coordinator' | 'project_lead') {
     onReady(connectedUrl, connectedConfig!, connectedMembers, name, role)
   }
 

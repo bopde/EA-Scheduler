@@ -15,7 +15,7 @@ import MyTeamsView from './MyTeamsView'
 interface Props {
   scriptUrl: string
   memberName: string
-  memberRole: 'member' | 'coordinator' | ''
+  memberRole: 'member' | 'coordinator' | 'project_lead' | ''
   config: Config
   onLogout: () => void
 }
@@ -51,9 +51,9 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
             <h1 className="text-lg font-bold text-gray-900">EA Scheduler</h1>
             <span className="text-sm text-gray-500">
               {memberName}
-              {memberRole === 'coordinator' && (
+              {(memberRole === 'coordinator' || memberRole === 'project_lead') && (
                 <span className="ml-1.5 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">
-                  Coordinator
+                  {memberRole === 'project_lead' ? 'Project Lead' : 'Coordinator'}
                 </span>
               )}
             </span>
@@ -77,7 +77,7 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
               >
                 My Teams
               </button>
-              {memberRole === 'coordinator' && (
+              {(memberRole === 'coordinator' || memberRole === 'project_lead') && (
                 <button
                   onClick={() => setView('teams')}
                   className={`px-3 py-1.5 ${view === 'teams' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
@@ -141,11 +141,12 @@ export default function SchedulerPage({ scriptUrl, memberName, memberRole, confi
           />
         )}
 
-        {view === 'teams' && memberRole === 'coordinator' && (
+        {view === 'teams' && (memberRole === 'coordinator' || memberRole === 'project_lead') && (
           <CoordinatorPage
             scriptUrl={scriptUrl}
             from={toISODate(getMondayOf(new Date()))}
             to={toISODate(addDays(getMondayOf(new Date()), config.scheduling_weeks_ahead * 7 - 1))}
+            memberRole={memberRole}
           />
         )}
       </main>

@@ -20,6 +20,7 @@ function doPost(e) {
     var body = JSON.parse(e.postData.contents);
     var action = body.action;
     if (action === 'saveAvailability') return handleSaveAvailability(body);
+    if (action === 'saveTeamSlot') return handleSaveTeamSlot(body);
     return err('Unknown action: ' + action);
   } catch (ex) {
     return err(ex.message || String(ex));
@@ -40,7 +41,10 @@ function handleGetMembers() {
     var role = String(rows[i][COL_MEM_ROLE - 1]).trim().toLowerCase();
     var active = rows[i][COL_MEM_ACTIVE - 1];
     if (name && active === true) {
-      members.push({ name: name, role: role === 'coordinator' ? 'coordinator' : 'member' });
+      var normalizedRole = 'member';
+      if (role === 'coordinator') normalizedRole = 'coordinator';
+      if (role === 'project_lead' || role === 'project lead') normalizedRole = 'project_lead';
+      members.push({ name: name, role: normalizedRole });
     }
   }
   return ok(members);
@@ -71,14 +75,26 @@ function handleGetAvailability(e) {
 function handleGetAllAvailability(e) {
   var from = e.parameter.from;
   var to = e.parameter.to;
+
+  // Only return availability for currently active members
+  var memberRows = readSheetData(SHEET_MEMBERS);
+  var activeMembers = {};
+  for (var i = 0; i < memberRows.length; i++) {
+    var mName = String(memberRows[i][COL_MEM_NAME - 1]).trim();
+    var active = memberRows[i][COL_MEM_ACTIVE - 1];
+    if (mName && active === true) activeMembers[mName] = true;
+  }
+
   var rows = readSheetData(SHEET_AVAILABILITY);
   var slots = [];
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
+  for (var j = 0; j < rows.length; j++) {
+    var row = rows[j];
+    var memberName = String(row[COL_AVAIL_NAME - 1]).trim();
+    if (!activeMembers[memberName]) continue;
     var date = formatDateValue(row[COL_AVAIL_DATE - 1]);
     if (date < from || date > to) continue;
     slots.push({
-      memberName: String(row[COL_AVAIL_NAME - 1]).trim(),
+      memberName: memberName,
       date: date,
       shiftIndex: Number(row[COL_AVAIL_SHIFT - 1]),
       available: row[COL_AVAIL_AVAIL - 1] === true,
@@ -155,43 +171,46 @@ function handleRecomputeTeams(e) {
     var role = String(memberRows[i][COL_MEM_ROLE - 1]).trim().toLowerCase();
     var active = memberRows[i][COL_MEM_ACTIVE - 1];
     if (name && active === true) {
-      members.push({ name: name, role: role === 'coordinator' ? 'coordinator' : 'member' });
+      var normalizedRole = 'member';
+      if (role === 'coordinator') normalizedRole = 'coordinator';
+      if (role === 'project_lead' || role === 'project lead') normalizedRole = 'project_lead';
+      members.push({ name: name, role: normalizedRole });
     }
   }
+
+  // Build active member set to filter out deactivated members' old availability rows
+  var activeMemberSet = {};
+  for (var am = 0; am < members.length; am++) activeMemberSet[members[am].name] = true;
 
   var availRows = readSheetData(SHEET_AVAILABILITY);
   var allSlots = [];
   for (var j = 0; j < availRows.length; j++) {
     var row = availRows[j];
+    var memberName = String(row[COL_AVAIL_NAME - 1]).trim();
+    if (!activeMemberSet[memberName]) continue;
     var date = formatDateValue(row[COL_AVAIL_DATE - 1]);
     if (date < from || date > to) continue;
     allSlots.push({
-      memberName: String(row[COL_AVAIL_NAME - 1]).trim(),
+      memberName: memberName,
       date: date,
       shiftIndex: Number(row[COL_AVAIL_SHIFT - 1]),
       available: row[COL_AVAIL_AVAIL - 1] === true,
     });
   }
 
-  // Build list of all (date, shiftIndex) pairs in range
-  var slotPairs = [];
+  // Process each day: compute shift 0, then shift 1 with shift-0 results for continuity
+  var allTeams = [];
   var cur = new Date(from);
   var end = new Date(to);
   while (cur <= end) {
     var iso = cur.toISOString().split('T')[0];
-    slotPairs.push({ date: iso, shiftIndex: 0 });
-    slotPairs.push({ date: iso, shiftIndex: 1 });
+    var shift0 = computeTeamsForSlot(iso, 0, allSlots, members, minTeamSize, maxTeamSize, null);
+    var shift1 = computeTeamsForSlot(iso, 1, allSlots, members, minTeamSize, maxTeamSize, shift0);
+    allTeams = allTeams.concat(shift0).concat(shift1);
     cur.setDate(cur.getDate() + 1);
   }
 
-  var allTeams = [];
-  for (var k = 0; k < slotPairs.length; k++) {
-    var pair = slotPairs[k];
-    var computed = computeTeamsForSlot(pair.date, pair.shiftIndex, allSlots, members, minTeamSize, maxTeamSize);
-    allTeams = allTeams.concat(computed);
-  }
-
-  // Write to Teams sheet: delete all data rows then append fresh
+  // Overwrite Teams sheet
   var teamsSheet = getSheet(SHEET_TEAMS);
   var lastRow = teamsSheet.getLastRow();
   if (lastRow > 1) {
@@ -215,9 +234,47 @@ function handleRecomputeTeams(e) {
   return ok({ computed: allTeams.length });
 }
 
+function handleSaveTeamSlot(body) {
+  var date = body.date;
+  var shiftIndex = Number(body.shiftIndex);
+  var teams = body.teams;
+
+  var sheet = getSheet(SHEET_TEAMS);
+  var rows = readSheetData(SHEET_TEAMS);
+
+  // Collect row numbers for this date+shift, then delete bottom-up
+  var rowsToDelete = [];
+  for (var i = 0; i < rows.length; i++) {
+    var rowDate = formatDateValue(rows[i][COL_TEAM_DATE - 1]);
+    var rowShift = Number(rows[i][COL_TEAM_SHIFT - 1]);
+    if (rowDate === date && rowShift === shiftIndex) {
+      rowsToDelete.push(i + 2); // +1 for header row, +1 for 1-based index
+    }
+  }
+  for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+    sheet.deleteRow(rowsToDelete[d]);
+  }
+
+  var ts = new Date().toISOString();
+  for (var t = 0; t < teams.length; t++) {
+    var team = teams[t];
+    sheet.appendRow([
+      team.date,
+      team.shiftIndex,
+      team.teamNumber,
+      team.coordinatorName,
+      Array.isArray(team.members) ? team.members.join(', ') : String(team.members),
+      team.coordinatorFilledIn,
+      ts,
+    ]);
+  }
+
+  return ok({ saved: teams.length });
+}
+
 // ===== TEAM ASSIGNMENT ALGORITHM =====
 
-function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, maxTeamSize) {
+function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, maxTeamSize, prevShiftTeams) {
   var roleMap = {};
   for (var i = 0; i < members.length; i++) {
     roleMap[members[i].name] = members[i].role;
@@ -235,7 +292,7 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
     if (seen[mName]) continue;
     seen[mName] = true;
     var role = roleMap[mName];
-    if (role === 'coordinator') availCoords.push(mName);
+    if (role === 'coordinator' || role === 'project_lead') availCoords.push(mName);
     else availMembers.push(mName);
   }
 
@@ -243,8 +300,24 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
   var numTeams = Math.min(availCoords.length, Math.floor(total / minTeamSize));
   if (numTeams === 0) return [];
 
+  // For shift 1: sort coordinators so those who led in shift 0 come first
+  // (same order), keeping team composition stable across both shifts.
+  if (shiftIndex === 1 && prevShiftTeams && prevShiftTeams.length > 0) {
+    var prevLeaderOrder = {};
+    for (var pt = 0; pt < prevShiftTeams.length; pt++) {
+      prevLeaderOrder[prevShiftTeams[pt].coordinatorName] = pt;
+    }
+    availCoords.sort(function(a, b) {
+      var ai = prevLeaderOrder.hasOwnProperty(a) ? prevLeaderOrder[a] : 9999;
+      var bi = prevLeaderOrder.hasOwnProperty(b) ? prevLeaderOrder[b] : 9999;
+      return ai - bi;
+    });
+  }
+
   var leaders = availCoords.slice(0, numTeams);
   var spareCoords = availCoords.slice(numTeams);
+  var spareSet = {};
+  for (var sc = 0; sc < spareCoords.length; sc++) spareSet[spareCoords[sc]] = true;
 
   var teams = [];
   for (var n = 0; n < numTeams; n++) {
@@ -258,24 +331,50 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
     });
   }
 
-  var spareSet = {};
-  for (var sc = 0; sc < spareCoords.length; sc++) spareSet[spareCoords[sc]] = true;
-
-  // Distribute everyone round-robin: regular members first, spare coordinators after.
-  // Spare coordinators land wherever they land — all available people get assigned.
   var pool = availMembers.concat(spareCoords);
-  for (var p = 0; p < pool.length; p++) {
-    var teamIdx = p % numTeams;
-    if (teams[teamIdx].members.length < maxTeamSize - 1) {
-      teams[teamIdx].members.push(pool[p]);
-      if (spareSet[pool[p]]) teams[teamIdx].coordinatorFilledIn = true;
+  var assigned = {};
+
+  // For shift 1: pre-populate teams with their shift-0 members who are
+  // also available for shift 1, keeping the same people together.
+  if (shiftIndex === 1 && prevShiftTeams && prevShiftTeams.length > 0) {
+    var availNow = {};
+    for (var a = 0; a < available.length; a++) availNow[available[a].memberName] = true;
+
+    var leaderToIdx = {};
+    for (var li = 0; li < teams.length; li++) leaderToIdx[teams[li].coordinatorName] = li;
+
+    for (var pi = 0; pi < prevShiftTeams.length; pi++) {
+      var prevTeam = prevShiftTeams[pi];
+      var teamIdx = leaderToIdx[prevTeam.coordinatorName];
+      if (teamIdx === undefined) continue;
+      for (var pm = 0; pm < prevTeam.members.length; pm++) {
+        var prevMember = prevTeam.members[pm];
+        if (availNow[prevMember] && !assigned[prevMember] && teams[teamIdx].members.length < maxTeamSize - 1) {
+          teams[teamIdx].members.push(prevMember);
+          assigned[prevMember] = true;
+          if (spareSet[prevMember]) teams[teamIdx].coordinatorFilledIn = true;
+        }
+      }
+    }
+  }
+
+  // Distribute remaining available people round-robin
+  var remaining = [];
+  for (var r = 0; r < pool.length; r++) {
+    if (!assigned[pool[r]]) remaining.push(pool[r]);
+  }
+  for (var rp = 0; rp < remaining.length; rp++) {
+    var ti = rp % numTeams;
+    if (teams[ti].members.length < maxTeamSize - 1) {
+      teams[ti].members.push(remaining[rp]);
+      if (spareSet[remaining[rp]]) teams[ti].coordinatorFilledIn = true;
     }
   }
 
   return teams;
 }
 
-// ===== SETUP FUNCTION (run once by coordinator) =====
+// ===== SETUP FUNCTION (run once by project lead) =====
 
 function setupSheets() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -290,7 +389,6 @@ function setupSheets() {
     return sheet;
   }
 
-  // Config sheet
   var configSheet = ensureSheet(SHEET_CONFIG, ['Key', 'Value']);
   if (configSheet.getLastRow() < 2) {
     var defaults = [
@@ -305,7 +403,6 @@ function setupSheets() {
       ['scheduling_weeks_ahead', 4],
       ['min_team_size', 4],
       ['max_team_size', 6],
-      ['max_teams', 3],
     ];
     configSheet.getRange(2, 1, defaults.length, 2).setValues(defaults);
   }
@@ -313,13 +410,11 @@ function setupSheets() {
   ensureSheet(SHEET_MEMBERS, ['name', 'role', 'active']);
 
   var availSheet = ensureSheet(SHEET_AVAILABILITY, ['member_name', 'date', 'shift_index', 'available', 'submitted_at']);
-  // Force date column to plain text so Sheets doesn't convert ISO strings to serials
   availSheet.getRange('B:B').setNumberFormat('@');
 
   var teamsSheet = ensureSheet(SHEET_TEAMS, ['date', 'shift_index', 'team_number', 'coordinator_name', 'members', 'coordinator_filled_in', 'computed_at']);
   teamsSheet.getRange('A:A').setNumberFormat('@');
 
-  // Force Config value column to plain text to prevent time strings becoming serials
   configSheet.getRange('B:B').setNumberFormat('@');
 
   SpreadsheetApp.getUi().alert('Setup complete! All required sheets have been created.');
