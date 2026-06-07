@@ -12,7 +12,8 @@ interface Props {
 export default function SetupPage({ onReady }: Props) {
   const { scriptUrl: cachedUrl, config: cachedConfig, members: cachedMembers, setConnection } = useSessionStore()
 
-  const [step, setStep] = useState<'url' | 'name'>(cachedUrl ? 'name' : 'url')
+  const urlParam = new URLSearchParams(window.location.search).get('url') ?? ''
+  const [step, setStep] = useState<'url' | 'name'>(urlParam ? 'url' : cachedUrl ? 'name' : 'url')
   const [connectedUrl, setConnectedUrl] = useState(cachedUrl)
   const [connectedMembers, setConnectedMembers] = useState<Member[]>(cachedMembers)
   const [connectedConfig, setConnectedConfig] = useState<Config | null>(cachedConfig)
@@ -54,7 +55,7 @@ export default function SetupPage({ onReady }: Props) {
         </div>
 
         {step === 'url' && (
-          <ScriptUrlInput onConnected={handleConnected} />
+          <ScriptUrlInput onConnected={handleConnected} initialUrl={urlParam} />
         )}
 
         {step === 'name' && (
