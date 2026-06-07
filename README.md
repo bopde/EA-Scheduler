@@ -47,10 +47,11 @@ Open the **Members** sheet and fill in your team:
 |------|------|--------|
 | Alice | member | TRUE |
 | Bob | coordinator | TRUE |
-| Carol | member | TRUE |
+| Carol | project_lead | TRUE |
+| Dave | member | FALSE |
 
-- `role`: use `coordinator` for team leads, `member` for everyone else
-- `active`: set to `FALSE` to hide someone from the app without deleting them
+- `role`: use `member` for regular team members, `coordinator` for team leads, `project_lead` for senior leads (see roles below)
+- `active`: set to `FALSE` to hide someone from the app without deleting them — their existing availability data is ignored when computing teams
 
 ### 5. Deploy as a Web App
 
@@ -81,18 +82,33 @@ The URL is remembered in your browser, so you won't need to re-enter it on futur
 
 ---
 
-## Coordinator usage
+## Roles
 
-Once logged in as a coordinator, you'll see **My Schedule**, **My Teams**, and **All Teams** tabs.
+There are three roles:
+
+| Role | Description |
+|------|-------------|
+| `member` | Can view and edit their own availability and see their team assignments |
+| `coordinator` | Same as member, plus can view the **All Teams** tab |
+| `project_lead` | Same as coordinator, plus can click **Recompute Teams** and **drag and drop** members between teams manually |
+
+---
+
+## Coordinator and Project Lead usage
+
+Once logged in as a coordinator or project lead, you'll see **My Schedule**, **My Teams**, and **All Teams** tabs.
 
 - **My Schedule** — same as any team member; set your own availability here
 - **My Teams** — shows the shifts you're personally assigned to (as leader or fill-in)
 - **All Teams** — shows every computed team assignment across the current scheduling window
-  - Click **Recompute Teams** after availability has been updated to regenerate assignments
 
-### How far ahead does Recompute Teams work?
+### Recomputing teams (Project Leads only)
 
-It covers the current scheduling window: from today's Monday through `scheduling_weeks_ahead` weeks (default: 4 weeks). It only rewrites team assignments for that date range — dates outside the window are left untouched.
+Click **Recompute Teams** in the All Teams view after availability has been updated. This regenerates all assignments for the current scheduling window (from today's Monday through `scheduling_weeks_ahead` weeks ahead). Dates outside that window are left untouched.
+
+### Manual drag and drop (Project Leads only)
+
+In the All Teams view, project leads can drag any team member or coordinator from one team to another, or to/from the "Available but not assigned" pool. Changes are saved automatically a moment after you finish dragging.
 
 ### How coordinators are assigned (leading vs filling in)
 
@@ -102,6 +118,10 @@ It covers the current scheduling window: from today's Monday through `scheduling
 4. Any **remaining coordinators** are treated as regular members and distributed into existing teams. They appear with an amber "filling in" badge.
 
 There is no manual priority — whoever submitted availability first is most likely to lead.
+
+### Shift continuity within a day
+
+When there are two shifts in a day, the algorithm tries to keep team members together across both shifts. If someone was in Team 2 for shift 1, the algorithm will try to place them in Team 2 for shift 2. New members (only available for shift 2) are distributed round-robin to fill any remaining gaps. This continuity only applies within the same day — teams are recomputed independently for each new day.
 
 ### Who sits out when teams are full
 
