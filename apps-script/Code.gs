@@ -358,16 +358,22 @@ function computeTeamsForSlot(date, shiftIndex, allSlots, members, minTeamSize, m
     }
   }
 
-  // Distribute remaining available people round-robin
+  // Distribute remaining available people round-robin; if the next team is full,
+  // try the next rather than skipping the person entirely
   var remaining = [];
   for (var r = 0; r < pool.length; r++) {
     if (!assigned[pool[r]]) remaining.push(pool[r]);
   }
+  var teamPointer = 0;
   for (var rp = 0; rp < remaining.length; rp++) {
-    var ti = rp % numTeams;
-    if (teams[ti].members.length < maxTeamSize - 1) {
-      teams[ti].members.push(remaining[rp]);
-      if (spareSet[remaining[rp]]) teams[ti].coordinatorFilledIn = true;
+    for (var attempt = 0; attempt < numTeams; attempt++) {
+      var ti = (teamPointer + attempt) % numTeams;
+      if (teams[ti].members.length < maxTeamSize - 1) {
+        teams[ti].members.push(remaining[rp]);
+        if (spareSet[remaining[rp]]) teams[ti].coordinatorFilledIn = true;
+        teamPointer = (ti + 1) % numTeams;
+        break;
+      }
     }
   }
 

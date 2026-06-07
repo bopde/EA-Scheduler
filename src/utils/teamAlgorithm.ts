@@ -74,13 +74,19 @@ export function computeTeams(
     }
   }
 
-  // Distribute remaining pool round-robin
+  // Distribute remaining pool round-robin; if the next team is full, try the next
+  // rather than skipping the person entirely
   const remaining = pool.filter((p) => !assigned.has(p))
-  for (let rp = 0; rp < remaining.length; rp++) {
-    const ti = rp % numTeams
-    if (teams[ti].members.length < maxTeamSize - 1) {
-      teams[ti].members.push(remaining[rp])
-      if (spareSet.has(remaining[rp])) teams[ti].coordinatorFilledIn = true
+  let teamPointer = 0
+  for (const person of remaining) {
+    for (let attempt = 0; attempt < numTeams; attempt++) {
+      const ti = (teamPointer + attempt) % numTeams
+      if (teams[ti].members.length < maxTeamSize - 1) {
+        teams[ti].members.push(person)
+        if (spareSet.has(person)) teams[ti].coordinatorFilledIn = true
+        teamPointer = (ti + 1) % numTeams
+        break
+      }
     }
   }
 
