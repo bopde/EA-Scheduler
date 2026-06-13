@@ -158,6 +158,18 @@ function handleGetTeams(e) {
 }
 
 function handleRecomputeTeams(e) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    return err('Recompute is already in progress. Please try again in a moment.');
+  }
+  try {
+    return _doRecomputeTeams(e);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _doRecomputeTeams(e) {
   var from = e.parameter.from;
   var to = e.parameter.to;
   var config = readConfig();
@@ -210,11 +222,16 @@ function handleRecomputeTeams(e) {
     cur.setDate(cur.getDate() + 1);
   }
 
-  // Overwrite Teams sheet
+  // Delete only rows within the recompute date range (preserves other weeks)
   var teamsSheet = getSheet(SHEET_TEAMS);
-  var lastRow = teamsSheet.getLastRow();
-  if (lastRow > 1) {
-    teamsSheet.deleteRows(2, lastRow - 1);
+  var existingRows = readSheetData(SHEET_TEAMS);
+  var rowsToDelete = [];
+  for (var dr = 0; dr < existingRows.length; dr++) {
+    var rowDate = formatDateValue(existingRows[dr][COL_TEAM_DATE - 1]);
+    if (rowDate >= from && rowDate <= to) rowsToDelete.push(dr + 2);
+  }
+  for (var dd = rowsToDelete.length - 1; dd >= 0; dd--) {
+    teamsSheet.deleteRow(rowsToDelete[dd]);
   }
 
   var ts = new Date().toISOString();

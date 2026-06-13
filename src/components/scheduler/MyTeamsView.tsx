@@ -1,21 +1,19 @@
 import { useRoleMap } from '../../hooks/useRoleMap'
 import { useTeams } from '../../hooks/useTeams'
 import { Config } from '../../types'
-import { addDays, formatDisplayDate, getMondayOf, getShiftsForDate, parseISODate, toISODate } from '../../utils/dateUtils'
+import { addDays, formatDisplayDate, getShiftsForDate, parseISODate, toISODate } from '../../utils/dateUtils'
 
 interface Props {
   scriptUrl: string
   memberName: string
   memberRole: 'member' | 'coordinator' | 'project_lead' | ''
   config: Config
-  weekOffset: number
 }
 
-export default function MyTeamsView({ scriptUrl, memberName, memberRole, config, weekOffset }: Props) {
-  const startMonday = addDays(getMondayOf(new Date()), weekOffset * 7)
-  const endDate = addDays(startMonday, config.scheduling_weeks_ahead * 7 - 1)
-  const from = toISODate(startMonday)
-  const to = toISODate(endDate)
+export default function MyTeamsView({ scriptUrl, memberName, memberRole, config }: Props) {
+  const today = new Date()
+  const from = toISODate(today)
+  const to = toISODate(addDays(today, 6))
 
   const { teams, loading, error } = useTeams(scriptUrl, from, to)
   const roleMap = useRoleMap()
