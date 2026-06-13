@@ -212,26 +212,22 @@ function _doRecomputeTeams(e) {
 
   // Process each day: compute shift 0, then shift 1 with shift-0 results for continuity
   var allTeams = [];
+  var tz = Session.getScriptTimeZone();
   var cur = new Date(from);
   var end = new Date(to);
   while (cur <= end) {
-    var iso = cur.toISOString().split('T')[0];
+    var iso = Utilities.formatDate(cur, tz, 'yyyy-MM-dd');
     var shift0 = computeTeamsForSlot(iso, 0, allSlots, members, minTeamSize, maxTeamSize, null);
     var shift1 = computeTeamsForSlot(iso, 1, allSlots, members, minTeamSize, maxTeamSize, shift0);
     allTeams = allTeams.concat(shift0).concat(shift1);
     cur.setDate(cur.getDate() + 1);
   }
 
-  // Delete only rows within the recompute date range (preserves other weeks)
+  // Clear all existing team assignments — we only ever manage a 7-day window
   var teamsSheet = getSheet(SHEET_TEAMS);
-  var existingRows = readSheetData(SHEET_TEAMS);
-  var rowsToDelete = [];
-  for (var dr = 0; dr < existingRows.length; dr++) {
-    var rowDate = formatDateValue(existingRows[dr][COL_TEAM_DATE - 1]);
-    if (rowDate >= from && rowDate <= to) rowsToDelete.push(dr + 2);
-  }
-  for (var dd = rowsToDelete.length - 1; dd >= 0; dd--) {
-    teamsSheet.deleteRow(rowsToDelete[dd]);
+  var lastRow = teamsSheet.getLastRow();
+  if (lastRow > 1) {
+    teamsSheet.deleteRows(2, lastRow - 1);
   }
 
   var ts = new Date().toISOString();
